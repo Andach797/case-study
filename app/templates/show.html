@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Preview: {{ filename }}</h2>
+
+<table role="grid">
+  <thead>
+    <tr>
+      <th>Item&nbsp;ID</th>
+      <th>Item&nbsp;Name</th>
+      <th class="price">Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td>{{ row[0] }}</td>
+      <td>{{ row[1] }}</td>
+      <td class="price">{{ row[2] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p><a href="/" role="button" class="secondary">← Back</a></p>
+
+<style>
+  .price { text-align: right; }
+</style>
+{% endblock %}

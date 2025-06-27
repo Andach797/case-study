@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Upload a CSV</h2>
+<form action="/upload" method="post" enctype="multipart/form-data">
+  <input type="file" name="file" accept=".csv" required />
+  <button type="submit">Upload</button>
+</form>
+
+<h3 class="mt-4">Previously processed files</h3>
+<ul>
+  {% for fname in files %}
+  <li><a href="/files/{{ fname }}">{{ fname }}</a></li>
+  {% else %}
+  <li>No files yet</li>
+  {% endfor %}
+</ul>
+{% endblock %}
