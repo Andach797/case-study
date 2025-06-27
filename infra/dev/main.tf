@@ -1,3 +1,4 @@
+# TODO: Format also for terraform
 module "network" {
   source  = "../modules/vpc"
   vpc_cidr             = var.vpc_cidr
@@ -47,3 +48,30 @@ module "eks_cluster" {
 
   tags = var.tags
 }
+
+module "csv_bucket" {
+  source          = "../modules/s3_bucket"
+  name            = "andac-case-csv-uploads-${var.environment}"
+  days_to_glacier = 30
+  force_destroy   = true
+
+  tags = merge(var.tags, {
+    Name = "csv-uploads-${var.environment}"
+  })
+}
+
+# # TODO: Iam policy for now, maybe not needed?
+# data "aws_iam_policy_document" "csv_write_policy" {
+#   statement {
+#     sid       = "WriteCsvUploads"
+#     effect    = "Allow"
+#     actions   = ["s3:PutObject"]
+#     resources = ["${module.csv_bucket.arn}/*"]
+#   }
+# }
+
+# resource "aws_iam_role_policy" "csv_write" {
+#   name   = "csv-write-${var.environment}"
+#   role   = aws_iam_role.app_role.id
+#   policy = data.aws_iam_policy_document.csv_write_policy.json
+# }

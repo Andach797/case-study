@@ -7,16 +7,17 @@ from pathlib import Path
 from datetime import datetime
 import shutil
 from typing import List
+# TODO: Order imports at some point lol. Also black formatter maybe?
+import boto3
+from app.settings import CSV_BUCKET
 
 app = FastAPI(title="CSV Processor")
 
 BASE_DIR = Path(__file__).parent.resolve()
-
 UPLOAD_DIR = BASE_DIR.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
 app.mount(
     "/static",
     StaticFiles(directory=str(Path(__file__).parent / "static")),
@@ -63,6 +64,14 @@ async def upload_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
     except Exception as exc:
         dest.unlink(missing_ok=True)
         raise HTTPException(400, f"Failed to parse CSV: {exc}") from exc
+
+    # Upload to S3 if bucket is configured
+    if CSV_BUCKET:
+        try:
+            boto3.client("s3").upload_file(str(dest), CSV_BUCKET, dest.name)
+        except Exception as exc:
+            # TODO: testing; don't break local preview if S3 fails
+            raise HTTPException(500, f"S3 upload failed: {exc}") from exc
 
     return templates.TemplateResponse(
         "show.html",
