@@ -75,3 +75,23 @@ module "csv_bucket" {
 #   role   = aws_iam_role.app_role.id
 #   policy = data.aws_iam_policy_document.csv_write_policy.json
 # }
+
+module "efs_shared_static" {
+  source = "../modules/efs"
+
+  name                     = "${var.project_tag}-${var.environment}-static"
+  vpc_id                   = module.network.vpc_id
+  subnet_ids               = module.network.private_subnet_ids
+  allowed_security_group_ids = [
+    module.eks_cluster.cluster_security_group_id
+  ]
+
+  create_access_point = true
+  tags                = var.tags
+}
+
+module "web_app_ecr" {
+  source = "../modules/ecr"
+  name   = "web-app-${var.environment}"
+  tags   = var.tags
+}
