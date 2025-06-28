@@ -1,9 +1,21 @@
-import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
-UPLOAD_DIR = BASE_DIR.parent / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# TODO: Read bucket name from env var fallback to local usage for now
-CSV_BUCKET = os.getenv("CSV_BUCKET")
+class Settings(BaseSettings):
+    csv_bucket: str = Field("", env="CSV_BUCKET")
+    aws_region: str = Field("eu-central-1", env="AWS_DEFAULT_REGION")
+    max_upload_mb: int = Field(5, env="MAX_UPLOAD_MB")
+    log_level: str = Field("INFO", env="LOG_LEVEL")
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False
+    )
+
+settings = Settings()
+
+BASE_DIR = Path(__file__).resolve().parent
+UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

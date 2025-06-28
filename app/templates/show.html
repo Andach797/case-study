@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
+<p><a href="/" role="button" class="secondary">← Back</a></p>
+
 <h2>Preview: {{ filename }}</h2>
 
 <table role="grid">
@@ -20,8 +22,6 @@
     {% endfor %}
   </tbody>
 </table>
-
-<p><a href="/" role="button" class="secondary">← Back</a></p>
 
 <style>
   .price { text-align: right; }

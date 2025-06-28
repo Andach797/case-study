@@ -9,9 +9,9 @@
 <h3 class="mt-4">Previously processed files</h3>
 <ul>
   {% for fname in files %}
-  <li><a href="/files/{{ fname }}">{{ fname }}</a></li>
+    <li><a href="/files/{{ fname }}">{{ fname }}</a></li>
   {% else %}
-  <li>No files yet</li>
+    <li>No files yet</li>
   {% endfor %}
 </ul>
 {% endblock %}
