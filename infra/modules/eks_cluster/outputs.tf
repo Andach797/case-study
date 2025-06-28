@@ -32,3 +32,13 @@ output "cluster_security_group_id" {
   description = "Security group ID attached to the EKS control plane"
   value       = aws_eks_cluster.cluster.vpc_config[0].cluster_security_group_id
 }
+
+output "eks_oidc_arn" {
+  value       = aws_iam_openid_connect_provider.eks_oidc.arn
+  description = "ARN of the cluster OIDC provider"
+}
+
+output "eks_oidc_url" {
+  value       = aws_iam_openid_connect_provider.eks_oidc.url
+  description = "URL of the cluster OIDC provider"
+}

@@ -1,7 +1,3 @@
-############################################
-# Iam Roles for EKS Cluster and Nodes
-############################################
-
 # Iam role for EKS control plane
 resource "aws_iam_role" "eks_cluster_role" {
   name = "${var.cluster_name}-eks-cluster-role"
@@ -127,4 +123,41 @@ resource "aws_eks_node_group" "managed" {
     { Project = var.project_tag, Environment = var.environment },
     var.tags
   )
+}
+resource "aws_iam_role" "efs_csi_sa_role" {
+  name               = "${var.cluster_name}-efs-csi-sa"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.eks_oidc.arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${replace(aws_iam_openid_connect_provider.eks_oidc.url, "https://", "")}:sub" = "system:serviceaccount:kube-system:efs-csi-controller-sa"
+        }
+      }
+    }]
+  })
+  tags = merge(
+    { Name = "${var.cluster_name}-efs-csi-sa", Project = var.project_tag, Environment = var.environment },
+    var.tags
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "efs_csi_policy" {
+  role       = aws_iam_role.efs_csi_sa_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
+}
+
+# AWS managed EFS-CSI add-on
+resource "aws_eks_addon" "efs_csi_driver" {
+  cluster_name             = aws_eks_cluster.cluster.name
+  addon_name               = "aws-efs-csi-driver"
+  addon_version            = "v1.7.3-eksbuild.1"     # latest as of 2025-06-28
+  service_account_role_arn = aws_iam_role.efs_csi_sa_role.arn
+
+  depends_on = [aws_iam_role_policy_attachment.efs_csi_policy]
 }

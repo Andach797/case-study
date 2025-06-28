@@ -31,16 +31,16 @@ module "eks_cluster" {
     on_demand = {
       capacity_type  = "ON_DEMAND"
       instance_types = ["t3.micro"]
-      desired_size   = 1
-      min_size       = 1
-      max_size       = 2
+      desired_size   = 2
+      min_size       = 2
+      max_size       = 3
       labels         = { workload = "free" }
     },
     spot = {
       capacity_type  = "SPOT"
       instance_types = ["t3.small"]
-      desired_size   = 0
-      min_size       = 0
+      desired_size   = 1
+      min_size       = 1
       max_size       = 3
       labels         = { workload = "spot" }
     }
@@ -60,21 +60,15 @@ module "csv_bucket" {
   })
 }
 
-# # TODO: Iam policy for now, maybe not needed?
-# data "aws_iam_policy_document" "csv_write_policy" {
-#   statement {
-#     sid       = "WriteCsvUploads"
-#     effect    = "Allow"
-#     actions   = ["s3:PutObject"]
-#     resources = ["${module.csv_bucket.arn}/*"]
-#   }
-# }
+module "web_app_irsa" {
+  source       = "../modules/irsa_sa"
 
-# resource "aws_iam_role_policy" "csv_write" {
-#   name   = "csv-write-${var.environment}"
-#   role   = aws_iam_role.app_role.id
-#   policy = data.aws_iam_policy_document.csv_write_policy.json
-# }
+  name_prefix  = "${var.project_tag}-${var.environment}-web-app"
+  bucket_arn   = module.csv_bucket.arn
+  oidc_arn     = module.eks_cluster.eks_oidc_arn
+  oidc_url     = replace(module.eks_cluster.eks_oidc_url, "https://", "")
+  tags         = var.tags
+}
 
 module "efs_shared_static" {
   source = "../modules/efs"
