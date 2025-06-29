@@ -105,3 +105,29 @@ module "web_app_secret" {
   }
   tags = var.tags
 }
+
+# Preparing for environment maybe changed with ci/cd
+resource "helm_release" "web_nginx" {
+  name       = "web-nginx"
+  chart      = "${path.module}/../../charts/web-nginx"
+  version    = "0.1.0"
+  namespace  = "default"
+
+  values = [
+    yamlencode({
+      image = {
+        repository = module.web_app_ecr.repository_url
+        tag        = var.image_tag
+      }
+
+      secretArn = module.web_app_secret.arn
+
+      efs = {
+        fileSystemId  = module.efs_shared_static.file_system_id
+        accessPointId = module.efs_shared_static.access_point_id
+      }
+    })
+  ]
+
+  depends_on = [module.eks_cluster]
+}

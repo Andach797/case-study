@@ -1,0 +1,29 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: efs-sc
+  labels:
+    {{- include "web.labels" . | nindent 4 }}
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: {{ .Values.efs.fileSystemId }}
+  accessPointId: {{ .Values.efs.accessPointId }}
+  directoryPerms: "{{ .Values.efs.directoryPerms }}"
+  uid: "{{ .Values.efs.uid }}"
+  gid: "{{ .Values.efs.gid }}"
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-static-pvc
+  labels:
+    {{- include "web.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 1Gi

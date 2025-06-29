@@ -1,0 +1,43 @@
+# deployment
+replicaCount: 3
+
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+nginxImage:
+  repository: nginx
+  tag: 1.27-alpine
+
+# config & secrets
+configMapName: web-app-config
+secretArn: ""
+
+app:
+  logLevel: "INFO"
+  maxUploadMB: "5"
+
+# efs parameters
+efs:
+  fileSystemId: ""
+  accessPointId: ""
+  directoryPerms: "750"
+  uid: "1000"
+  gid: "1000"
+
+# service
+service:
+  type: LoadBalancer
+  port: 80
+
+# autoscaling
+hpa:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPU: 60
+
+serviceAccount:
+  create: false
+  name: case-dev-web-app-sa
