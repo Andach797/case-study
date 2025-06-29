@@ -1,26 +1,23 @@
 resource "aws_security_group" "efs_sg" {
   name        = "${var.name}-sg"
-  description = "EFS mount target SG"
+  description = "Allow NFS from VPC"
   vpc_id      = var.vpc_id
+  tags        = merge({ Name = "${var.name}-sg" }, var.tags)
 
-  # Allow inbound NFS from the provided SGs (EKS nodes / cluster SG)
+  # allow nes from anywhere in the vpc
   ingress {
-    from_port       = 2049
-    to_port         = 2049
-    protocol        = "tcp"
-    security_groups = var.allowed_security_group_ids
-    description     = "NFS from worker nodes"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = [ var.vpc_cidr ]
   }
 
-  # Egress – allow everything
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = merge(var.tags, { Name = "${var.name}-sg" })
 }
 
 resource "aws_efs_file_system" "this" {

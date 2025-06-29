@@ -13,6 +13,12 @@ variable "bucket_arn" {
   type        = string
 }
 
+variable "secret_arns" {
+  type        = list(string)
+  description = "Secrets Manager ARNs the pod may read"
+  default     = []
+}
+
 variable "oidc_arn" {
   description = "OIDC provider ARN from EKS cluster"
   type        = string

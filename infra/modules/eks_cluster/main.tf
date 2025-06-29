@@ -156,8 +156,13 @@ resource "aws_iam_role_policy_attachment" "efs_csi_policy" {
 resource "aws_eks_addon" "efs_csi_driver" {
   cluster_name             = aws_eks_cluster.cluster.name
   addon_name               = "aws-efs-csi-driver"
-  addon_version            = "v1.7.3-eksbuild.1"     # latest as of 2025-06-28
+  addon_version            = "v1.7.3-eksbuild.1"
   service_account_role_arn = aws_iam_role.efs_csi_sa_role.arn
 
   depends_on = [aws_iam_role_policy_attachment.efs_csi_policy]
+}
+# TODO: Maybe read/write is sufficent
+resource "aws_iam_role_policy_attachment" "node_efs_client_policy" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonElasticFileSystemClientFullAccess"
 }

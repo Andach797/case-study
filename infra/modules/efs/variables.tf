@@ -8,6 +8,11 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "vpc_cidr" {
+  description = "VPC CIDR to open NFS"
+  type        = string
+}
+
 variable "subnet_ids" {
   description = "List of one subnet per AZ where mount targets will be placed"
   type        = list(string)

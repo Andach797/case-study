@@ -64,9 +64,13 @@ module "web_app_irsa" {
   source       = "../modules/irsa_sa"
 
   name_prefix  = "${var.project_tag}-${var.environment}-web-app"
+  namespace    = "default"
   bucket_arn   = module.csv_bucket.arn
+
   oidc_arn     = module.eks_cluster.eks_oidc_arn
   oidc_url     = replace(module.eks_cluster.eks_oidc_url, "https://", "")
+
+  secret_arns  = [ module.web_app_secret.arn ]
   tags         = var.tags
 }
 
@@ -75,11 +79,13 @@ module "efs_shared_static" {
 
   name                     = "${var.project_tag}-${var.environment}-static"
   vpc_id                   = module.network.vpc_id
-  subnet_ids               = module.network.private_subnet_ids
-  allowed_security_group_ids = [
-    module.eks_cluster.cluster_security_group_id
-  ]
+  vpc_cidr     = var.vpc_cidr  
 
+  subnet_ids               = module.network.private_subnet_ids
+  allowed_security_group_ids = concat(
+    [ module.eks_cluster.cluster_security_group_id ],
+      module.eks_cluster.worker_sg_ids
+)
   create_access_point = true
   tags                = var.tags
 }
@@ -88,4 +94,14 @@ module "web_app_ecr" {
   source = "../modules/ecr"
   name   = "web-app-${var.environment}"
   tags   = var.tags
+}
+
+module "web_app_secret" {
+  source      = "../modules/secrets_manager"
+  name        = "${var.project_tag}-${var.environment}-web-app"
+  description = "Secrets for the web app"
+  secret_kv = {
+    CSV_BUCKET = module.csv_bucket.bucket
+  }
+  tags = var.tags
 }

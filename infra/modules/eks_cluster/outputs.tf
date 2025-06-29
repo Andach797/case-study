@@ -42,3 +42,10 @@ output "eks_oidc_url" {
   value       = aws_iam_openid_connect_provider.eks_oidc.url
   description = "URL of the cluster OIDC provider"
 }
+
+output "worker_sg_ids" {
+  value = [
+    for ng in aws_eks_node_group.managed :
+    ng.resources[0].remote_access_security_group_id
+  ]
+}

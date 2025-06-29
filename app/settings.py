@@ -3,6 +3,23 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+import json, os, logging, boto3
+
+def _inject_secrets():
+    arn = os.getenv("CONFIG_SECRET_ARN")
+    if not arn:
+        return
+    region = os.getenv("AWS_DEFAULT_REGION", "eu-central-1")
+    sm = boto3.client("secretsmanager", region_name=region)
+    try:
+        payload = sm.get_secret_value(SecretId=arn)["SecretString"]
+        for k, v in json.loads(payload).items():
+            os.environ.setdefault(k, str(v))
+    except Exception as exc:
+        logging.warning("secrets-manager-fetch-failed %s", exc)
+
+_inject_secrets()
+
 class Settings(BaseSettings):
     csv_bucket: str = Field("", env="CSV_BUCKET")
     aws_region: str = Field("eu-central-1", env="AWS_DEFAULT_REGION")

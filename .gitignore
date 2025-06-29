@@ -26,6 +26,7 @@ Pipfile.lock
 
 # Terraform
 .terraform/
+*.lock.hcl
 
 # .tfstate files
 *.tfstate

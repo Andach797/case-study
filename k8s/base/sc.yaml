@@ -5,8 +5,8 @@ metadata:
 provisioner: efs.csi.aws.com
 parameters:
   provisioningMode: efs-ap          # dynamic AP
-  fileSystemId: fs-00f3b3c9be0ed5682
-  accessPointId: fsap-03c2f2cf008141285
+  fileSystemId: fs-03c6f56c02a155555
+  accessPointId: fsap-0e10253d76e704f9b
   directoryPerms: "750"
   uid: "1000"
   gid: "1000"

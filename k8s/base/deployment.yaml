@@ -20,9 +20,12 @@ spec:
         image: 562538630478.dkr.ecr.eu-central-1.amazonaws.com/web-app-dev:latest
         ports:
         - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: web-app-config
         env:
-        - name: CSV_BUCKET
-          value: "andac-case-csv-uploads-dev"
+        - name: CONFIG_SECRET_ARN
+          value: arn:aws:secretsmanager:eu-central-1:562538630478:secret:case-dev-web-app-HLdYDA
         volumeMounts:
         - name: shared-static
           mountPath: /app/uploads

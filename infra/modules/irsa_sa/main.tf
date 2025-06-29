@@ -28,6 +28,18 @@ data "aws_iam_policy_document" "inline" {
     resources = ["${var.bucket_arn}/*"]
     effect    = "Allow"
   }
+
+  # read runtime secrets dynamically 
+  dynamic "statement" {
+    for_each = length(var.secret_arns) == 0 ? [] : [1]
+    content {
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = var.secret_arns
+      effect    = "Allow"
+    }
+  }
+
+  # lets the app log its identity maybe needed
   statement {
     actions   = ["sts:GetCallerIdentity"]
     resources = ["*"]
@@ -41,7 +53,6 @@ resource "aws_iam_role_policy" "inline" {
   policy = data.aws_iam_policy_document.inline.json
 }
 
-# K8s SA
 resource "kubernetes_service_account" "this" {
   metadata {
     name      = "${var.name_prefix}-sa"
