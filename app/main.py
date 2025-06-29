@@ -12,9 +12,8 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from settings import UPLOAD_DIR, settings
 from starlette.middleware.base import BaseHTTPMiddleware
-
-from settings import settings, UPLOAD_DIR
 
 logging.basicConfig(level=settings.log_level, format="%(message)s")
 structlog.configure(
@@ -35,6 +34,7 @@ except ClientError:
 
 app = FastAPI(title="CSV Processor")
 
+
 class MaxSizeMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, limit_mb: int):
         super().__init__(app)
@@ -46,7 +46,11 @@ class MaxSizeMiddleware(BaseHTTPMiddleware):
             return PlainTextResponse("file too large", status_code=413)
         return await call_next(request)
 
-app.add_middleware(MaxSizeMiddleware, limit_mb=settings.max_upload_mb)
+
+app.add_middleware(
+    MaxSizeMiddleware,
+    limit_mb=settings.max_upload_mb,
+)
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 app.mount(
@@ -54,6 +58,7 @@ app.mount(
     StaticFiles(directory=str(Path(__file__).parent / "static")),
     name="static",
 )
+
 
 def parse_csv(path: Path) -> List[List[str]]:
     rows: List[List[str]] = []
@@ -68,7 +73,11 @@ def parse_csv(path: Path) -> List[List[str]]:
         raise ValueError("CSV contained no data")
     return rows
 
-@app.get("/", response_class=HTMLResponse)
+
+@app.get(
+    "/",
+    response_class=HTMLResponse,
+)
 def index(request: Request) -> HTMLResponse:
     files = sorted(
         UPLOAD_DIR.glob("*.csv"),
@@ -77,11 +86,21 @@ def index(request: Request) -> HTMLResponse:
     )
     return templates.TemplateResponse(
         "upload.html",
-        {"request": request, "files": [p.name for p in files]},
+        {
+            "request": request,
+            "files": [p.name for p in files],
+        },
     )
 
-@app.post("/upload", response_class=HTMLResponse)
-async def upload_csv(request: Request, file: UploadFile = File(...)) -> HTMLResponse:
+
+@app.post(
+    "/upload",
+    response_class=HTMLResponse,
+)
+async def upload_csv(
+    request: Request,
+    file: UploadFile = File(...),
+) -> HTMLResponse:
     log.info("upload_start", filename=file.filename)
     if not file.filename.lower().endswith(".csv"):
         raise HTTPException(400, "only CSV files are allowed")
@@ -98,7 +117,11 @@ async def upload_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
 
         if settings.csv_bucket:
             buf = io.BytesIO(content)
-            log.info("s3_stream_begin", bucket=settings.csv_bucket, key=filename)
+            log.info(
+                "s3_stream_begin",
+                bucket=settings.csv_bucket,
+                key=filename,
+            )
             s3.upload_fileobj(buf, settings.csv_bucket, filename)
             log.info("s3_stream_done")
 
@@ -108,15 +131,29 @@ async def upload_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
     except Exception as exc:
         log.error("processing_failed", error=str(exc))
         dest.unlink(missing_ok=True)
-        raise HTTPException(500, f"processing failed: {exc}") from exc
+        raise HTTPException(
+            500,
+            f"processing failed: {exc}",
+        ) from exc
 
     return templates.TemplateResponse(
         "show.html",
-        {"request": request, "rows": rows, "filename": filename},
+        {
+            "request": request,
+            "rows": rows,
+            "filename": filename,
+        },
     )
 
-@app.get("/files/{filename}", response_class=HTMLResponse)
-def show_file(request: Request, filename: str) -> HTMLResponse:
+
+@app.get(
+    "/files/{filename}",
+    response_class=HTMLResponse,
+)
+def show_file(
+    request: Request,
+    filename: str,
+) -> HTMLResponse:
     if filename != Path(filename).name:
         raise HTTPException(400, "bad filename")
 
@@ -125,8 +162,16 @@ def show_file(request: Request, filename: str) -> HTMLResponse:
         raise HTTPException(404, "not found")
 
     rows = parse_csv(target)
-    log.info("display_file", filename=filename, rows=len(rows))
+    log.info(
+        "display_file",
+        filename=filename,
+        rows=len(rows),
+    )
     return templates.TemplateResponse(
         "show.html",
-        {"request": request, "rows": rows, "filename": filename},
+        {
+            "request": request,
+            "rows": rows,
+            "filename": filename,
+        },
     )

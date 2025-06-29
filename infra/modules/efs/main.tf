@@ -9,7 +9,7 @@ resource "aws_security_group" "efs_sg" {
     from_port   = 2049
     to_port     = 2049
     protocol    = "tcp"
-    cidr_blocks = [ var.vpc_cidr ]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
@@ -21,18 +21,18 @@ resource "aws_security_group" "efs_sg" {
 }
 
 resource "aws_efs_file_system" "this" {
-  creation_token   = var.name
-  encrypted        = true
-  throughput_mode  = "bursting"
+  creation_token  = var.name
+  encrypted       = true
+  throughput_mode = "bursting"
 
   tags = merge(var.tags, { Name = var.name })
 }
 
 resource "aws_efs_mount_target" "this" {
-  count            = length(var.subnet_ids)
-  file_system_id   = aws_efs_file_system.this.id
-  subnet_id        = var.subnet_ids[count.index]
-  security_groups  = [aws_security_group.efs_sg.id]
+  count           = length(var.subnet_ids)
+  file_system_id  = aws_efs_file_system.this.id
+  subnet_id       = var.subnet_ids[count.index]
+  security_groups = [aws_security_group.efs_sg.id]
 }
 
 resource "aws_efs_access_point" "this" {

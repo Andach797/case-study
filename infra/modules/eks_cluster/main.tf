@@ -2,11 +2,11 @@
 resource "aws_iam_role" "eks_cluster_role" {
   name = "${var.cluster_name}-eks-cluster-role"
   assume_role_policy = jsonencode({
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Principal": { "Service": "eks.amazonaws.com" },
-      "Action": "sts:AssumeRole"
+    "Version" : "2012-10-17",
+    "Statement" : [{
+      "Effect" : "Allow",
+      "Principal" : { "Service" : "eks.amazonaws.com" },
+      "Action" : "sts:AssumeRole"
     }]
   })
   tags = merge(
@@ -25,11 +25,11 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
 resource "aws_iam_role" "eks_node_role" {
   name = "${var.cluster_name}-eks-node-role"
   assume_role_policy = jsonencode({
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Principal": { "Service": "ec2.amazonaws.com" },
-      "Action": "sts:AssumeRole"
+    "Version" : "2012-10-17",
+    "Statement" : [{
+      "Effect" : "Allow",
+      "Principal" : { "Service" : "ec2.amazonaws.com" },
+      "Action" : "sts:AssumeRole"
     }]
   })
   tags = merge(
@@ -56,14 +56,14 @@ resource "aws_iam_role_policy_attachment" "node_ecr_policy" {
 ############################################
 
 resource "aws_eks_cluster" "cluster" {
-  name    = var.cluster_name
-  version = var.k8s_version
+  name     = var.cluster_name
+  version  = var.k8s_version
   role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
-    subnet_ids                 = var.subnet_ids
-    endpoint_private_access    = var.cluster_endpoint_private_access
-    endpoint_public_access     = var.cluster_endpoint_public_access
+    subnet_ids              = var.subnet_ids
+    endpoint_private_access = var.cluster_endpoint_private_access
+    endpoint_public_access  = var.cluster_endpoint_public_access
   }
 
   # all control plane log types
@@ -75,9 +75,9 @@ resource "aws_eks_cluster" "cluster" {
   )
 }
 
-# OIDC provider 
+# OIDC provider
 resource "aws_iam_openid_connect_provider" "eks_oidc" {
-  depends_on = [aws_eks_cluster.cluster]
+  depends_on      = [aws_eks_cluster.cluster]
   url             = aws_eks_cluster.cluster.identity[0].oidc[0].issuer
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"]
@@ -116,16 +116,16 @@ resource "aws_eks_node_group" "managed" {
 
   tags = merge(
     {
-      Name                                          = "${var.cluster_name}-${each.key}",
+      Name                                            = "${var.cluster_name}-${each.key}",
       "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned",
-      "k8s.io/cluster-autoscaler/enabled"            = "true"
+      "k8s.io/cluster-autoscaler/enabled"             = "true"
     },
     { Project = var.project_tag, Environment = var.environment },
     var.tags
   )
 }
 resource "aws_iam_role" "efs_csi_sa_role" {
-  name               = "${var.cluster_name}-efs-csi-sa"
+  name = "${var.cluster_name}-efs-csi-sa"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

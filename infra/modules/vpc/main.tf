@@ -14,7 +14,7 @@ resource "aws_vpc" "this" {
 # Internet Gateway on Public Route Table
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.this.id
-  tags   = merge({
+  tags = merge({
     Name        = "${var.project_tag}-${var.environment}-igw"
     Project     = var.project_tag
     Environment = var.environment
@@ -62,7 +62,7 @@ resource "aws_route_table_association" "public" {
 resource "aws_eip" "nat" {
   count  = var.create_nat_gateway ? 1 : 0
   domain = "vpc"
-  tags   = merge({
+  tags = merge({
     Name        = "${var.project_tag}-${var.environment}-eip-nat"
     Project     = var.project_tag
     Environment = var.environment
@@ -125,7 +125,7 @@ resource "aws_route_table_association" "private" {
 # VPC flow logs to cloudwatch logs
 resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   name              = "${var.project_tag}-${var.environment}-vpc-flow-logs"
-  retention_in_days = 30 
+  retention_in_days = 30
   tags = merge({
     Name        = "${var.project_tag}-${var.environment}-vpc-flow-logs"
     Project     = var.project_tag
@@ -136,11 +136,11 @@ resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
 resource "aws_iam_role" "flow_logs_role" {
   name = "${var.project_tag}-${var.environment}-flow-logs-role"
   assume_role_policy = jsonencode({
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Principal": { "Service": "vpc-flow-logs.amazonaws.com" },
-      "Action": "sts:AssumeRole"
+    "Version" : "2012-10-17",
+    "Statement" : [{
+      "Effect" : "Allow",
+      "Principal" : { "Service" : "vpc-flow-logs.amazonaws.com" },
+      "Action" : "sts:AssumeRole"
     }]
   })
   tags = merge({
@@ -153,26 +153,26 @@ resource "aws_iam_role" "flow_logs_role" {
 resource "aws_iam_role_policy" "flow_logs_policy" {
   role = aws_iam_role.flow_logs_role.id
   policy = jsonencode({
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Action": [
+    "Version" : "2012-10-17",
+    "Statement" : [{
+      "Effect" : "Allow",
+      "Action" : [
         "logs:CreateLogStream",
         "logs:PutLogEvents",
         "logs:DescribeLogGroups",
         "logs:DescribeLogStreams"
       ],
-      "Resource": "*"
+      "Resource" : "*"
     }]
   })
 }
 
 resource "aws_flow_log" "vpc_flow" {
-  vpc_id             = aws_vpc.this.id
-  traffic_type       = "ALL"
-  log_destination    = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  vpc_id               = aws_vpc.this.id
+  traffic_type         = "ALL"
+  log_destination      = aws_cloudwatch_log_group.vpc_flow_logs.arn
   log_destination_type = "cloud-watch-logs"
-  iam_role_arn       = aws_iam_role.flow_logs_role.arn
+  iam_role_arn         = aws_iam_role.flow_logs_role.arn
 
   tags = merge({
     Name        = "${var.project_tag}-${var.environment}-vpc-flow-log"

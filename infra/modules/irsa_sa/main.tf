@@ -29,7 +29,7 @@ data "aws_iam_policy_document" "inline" {
     effect    = "Allow"
   }
 
-  # read runtime secrets dynamically 
+  # read runtime secrets dynamically
   dynamic "statement" {
     for_each = length(var.secret_arns) == 0 ? [] : [1]
     content {

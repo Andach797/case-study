@@ -1,6 +1,6 @@
 # TODO: Format also for terraform
 module "network" {
-  source  = "../modules/vpc"
+  source               = "../modules/vpc"
   vpc_cidr             = var.vpc_cidr
   azs                  = var.azs
   public_subnet_cidrs  = var.public_subnet_cidrs
@@ -18,10 +18,10 @@ module "eks_cluster" {
   cluster_name = "${var.project_tag}-${var.environment}-eks"
   k8s_version  = "1.33"
 
-  subnet_ids   = module.network.private_subnet_ids
+  subnet_ids = module.network.private_subnet_ids
 
-  project_tag  = var.project_tag
-  environment  = var.environment
+  project_tag = var.project_tag
+  environment = var.environment
 
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
@@ -61,31 +61,31 @@ module "csv_bucket" {
 }
 
 module "web_app_irsa" {
-  source       = "../modules/irsa_sa"
+  source = "../modules/irsa_sa"
 
-  name_prefix  = "${var.project_tag}-${var.environment}-web-app"
-  namespace    = "default"
-  bucket_arn   = module.csv_bucket.arn
+  name_prefix = "${var.project_tag}-${var.environment}-web-app"
+  namespace   = "default"
+  bucket_arn  = module.csv_bucket.arn
 
-  oidc_arn     = module.eks_cluster.eks_oidc_arn
-  oidc_url     = replace(module.eks_cluster.eks_oidc_url, "https://", "")
+  oidc_arn = module.eks_cluster.eks_oidc_arn
+  oidc_url = replace(module.eks_cluster.eks_oidc_url, "https://", "")
 
-  secret_arns  = [ module.web_app_secret.arn ]
-  tags         = var.tags
+  secret_arns = [module.web_app_secret.arn]
+  tags        = var.tags
 }
 
 module "efs_shared_static" {
   source = "../modules/efs"
 
-  name                     = "${var.project_tag}-${var.environment}-static"
-  vpc_id                   = module.network.vpc_id
-  vpc_cidr     = var.vpc_cidr  
+  name     = "${var.project_tag}-${var.environment}-static"
+  vpc_id   = module.network.vpc_id
+  vpc_cidr = var.vpc_cidr
 
-  subnet_ids               = module.network.private_subnet_ids
+  subnet_ids = module.network.private_subnet_ids
   allowed_security_group_ids = concat(
-    [ module.eks_cluster.cluster_security_group_id ],
-      module.eks_cluster.worker_sg_ids
-)
+    [module.eks_cluster.cluster_security_group_id],
+    module.eks_cluster.worker_sg_ids
+  )
   create_access_point = true
   tags                = var.tags
 }
@@ -108,10 +108,10 @@ module "web_app_secret" {
 
 # Preparing for environment maybe changed with ci/cd
 resource "helm_release" "web_nginx" {
-  name       = "web-nginx"
-  chart      = "${path.module}/../../charts/web-nginx"
-  version    = "0.1.0"
-  namespace  = "default"
+  name      = "web-nginx"
+  chart     = "${path.module}/../../charts/web-nginx"
+  version   = "0.1.0"
+  namespace = "default"
 
   values = [
     yamlencode({
@@ -130,4 +130,16 @@ resource "helm_release" "web_nginx" {
   ]
 
   depends_on = [module.eks_cluster]
+}
+
+module "gha_push_role" {
+  source = "../modules/gha_iam_role"
+
+  repo_owner = "Andach797"
+  repo_name  = "case-study"
+
+  ecr_repo_arn = module.web_app_ecr.repository_arn
+
+  role_name = "case-gha-ecr-push"
+  tags      = var.tags
 }

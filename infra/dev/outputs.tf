@@ -24,3 +24,7 @@ output "efs_access_point_id" {
   description = "Access-point ID used by the EFS CSI driver"
   value       = module.efs_shared_static.access_point_id
 }
+
+output "gha_role_arn" {
+  value = module.gha_push_role.role_arn
+}

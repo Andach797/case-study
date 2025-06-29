@@ -23,8 +23,8 @@ variable "environment" {
 }
 
 variable "create_nat_gateway" {
-  type        = bool
-  default     = true
+  type    = bool
+  default = true
 }
 
 variable "tags" {
