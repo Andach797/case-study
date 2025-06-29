@@ -1,0 +1,9 @@
+body {
+    font-family: system-ui, sans-serif;
+    padding-block: 2rem;
+  }
+
+  table th.price,
+  table td.price {
+    text-align: right;
+  }
