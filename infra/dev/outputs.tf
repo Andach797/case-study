@@ -28,3 +28,7 @@ output "efs_access_point_id" {
 output "gha_role_arn" {
   value = module.gha_push_role.role_arn
 }
+
+output "gha_tf_role_arn" {
+  value = module.gha_tf_role.role_arn
+}

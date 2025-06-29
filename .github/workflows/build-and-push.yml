@@ -2,11 +2,19 @@ name: CI – Lint, Build & Publish
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    paths:
+      - "app/**"
+      - "charts/**"
+      - "tests/**"
+      - "*.py"
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
+    paths:
+      - "app/**"
+      - "charts/**"
+      - "tests/**"
+      - "*.py"
 
 env:
   AWS_REGION:    ${{ vars.AWS_REGION }}

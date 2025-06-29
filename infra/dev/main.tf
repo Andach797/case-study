@@ -133,7 +133,7 @@ resource "helm_release" "web_nginx" {
 }
 
 module "gha_push_role" {
-  source = "../modules/gha_iam_role"
+  source = "../modules/gha_ci_role"
 
   repo_owner = "Andach797"
   repo_name  = "case-study"
@@ -142,4 +142,19 @@ module "gha_push_role" {
 
   role_name = "case-gha-ecr-push"
   tags      = var.tags
+}
+
+module "gha_tf_role" {
+  source              = "../modules/gha_tf_role"
+  repo_owner          = "Andach797"
+  repo_name           = "case-study"
+  backend_bucket      = "andac-tfstate-dev"
+  csv_bucket          = module.csv_bucket.bucket
+  dynamodb_table_name = "andac-tfstate-lock-dev"
+  role_name           = "case-gha-terraform"
+  tags = {
+    Environment = var.environment
+    Project     = var.project_tag
+  }
+
 }

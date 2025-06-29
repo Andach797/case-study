@@ -31,3 +31,4 @@ repos:
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
+        args: ["--hook-config=--parallelism-ci-cpu-cores=2"]

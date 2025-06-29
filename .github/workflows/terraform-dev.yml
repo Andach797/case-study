@@ -1,0 +1,128 @@
+name: Terraform Dev
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - "*.tf*"
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - "*.tf*"
+
+concurrency:
+  group: tf-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+# ---------------------------------------------------------------------------
+# Repository / environment **variables** expected (Settings ▸ Environments ▸ dev):
+#   AWS_REGION            – eu-central-1
+#   PROJECT_TAG           – case
+#   ENVIRONMENT           – dev
+#   VPC_CIDR              – 10.0.0.0/16
+#   AZ1 / AZ2             – eu-central-1a / eu-central-1b
+#   PUBLIC_SUBNET1/2      – 10.0.0.0/20 , 10.0.16.0/20
+#   PRIVATE_SUBNET1/2     – 10.0.128.0/20 , 10.0.144.0/20
+#   (optional) TF_VARS    – full terraform.tfvars blob as a secret
+# ---------------------------------------------------------------------------
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+  TF_VAR_project_tag: ${{ vars.PROJECT_TAG }}
+  TF_VAR_environment: ${{ vars.ENVIRONMENT }}
+  TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+  TF_VAR_azs: '["${{ vars.AZ1 }}","${{ vars.AZ2 }}"]'
+  TF_VAR_public_subnet_cidrs: '["${{ vars.PUBLIC_SUBNET1 }}","${{ vars.PUBLIC_SUBNET2 }}"]'
+  TF_VAR_private_subnet_cidrs: '["${{ vars.PRIVATE_SUBNET1 }}","${{ vars.PRIVATE_SUBNET2 }}"]'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    name: Terraform fmt / validate / plan
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        working-directory: infra/dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.6
+
+      - name: Configure AWS creds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TF_DEV_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Write terraform.tfvars from secret (optional)
+        if: env.TF_VARS != ''
+        run: echo "$TF_VARS" > terraform.tfvars
+        env:
+          TF_VARS: ${{ secrets.TF_VARS }}
+
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend-config="key=eks/terraform.tfstate" -upgrade
+      - run: terraform validate -no-color
+
+      - name: Generate plan
+        run: terraform plan -input=false -no-color -out=tfplan | tee plan.txt
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: infra/dev/tfplan
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ## Terraform plan (dev)
+            See attached artifact or "Files changed → Show plan" output.
+
+  apply:
+    name: Terraform apply (dev)
+    needs: plan
+    if: github.ref == 'refs/heads/main' && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        working-directory: infra/dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.6
+
+      - name: Configure AWS creds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TF_DEV_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: infra/dev
+
+      - name: Init backend
+        run: terraform init -backend-config="key=eks/terraform.tfstate"
+
+      - name: Apply saved plan
+        run: terraform apply -input=false -auto-approve tfplan
