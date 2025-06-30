@@ -34,3 +34,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# Messed up creating this with gha_ci_role module so this is needed lol.
+variable "oidc_provider_arn" {
+  type        = string
+  description = "Pass in the OIDC provider ARN from gha_ci_role so we can trust it."
+}

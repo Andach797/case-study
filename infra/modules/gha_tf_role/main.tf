@@ -2,10 +2,6 @@ locals {
   repo = "${var.repo_owner}/${var.repo_name}"
 }
 
-data "aws_iam_openid_connect_provider" "github" {
-  url = "https://token.actions.githubusercontent.com"
-}
-
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
@@ -16,7 +12,7 @@ data "aws_iam_policy_document" "gha_assume" {
 
     principals {
       type        = "Federated"
-      identifiers = [data.aws_iam_openid_connect_provider.github.arn]
+      identifiers = [var.oidc_provider_arn]
     }
 
     condition {

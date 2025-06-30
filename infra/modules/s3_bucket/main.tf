@@ -27,8 +27,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
   rule {
-    id     = "glacier-transition"
+    id     = "Glacier"
     status = "Enabled"
+
+    filter {}
 
     transition {
       days          = var.days_to_glacier
