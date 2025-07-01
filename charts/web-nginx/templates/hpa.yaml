@@ -4,7 +4,7 @@ kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "web-nginx.fullname" . }}-hpa
   labels:
-    {{- include "web.labels" . | nindent 4 }}
+    {{- include "web-nginx.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

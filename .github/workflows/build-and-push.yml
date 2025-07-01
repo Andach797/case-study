@@ -2,26 +2,26 @@ name: CI – Lint, Build & Publish
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "app/**"
       - "tests/**"
       - "*.py"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "app/**"
       - "tests/**"
       - "*.py"
 
 env:
-  AWS_REGION:    ${{ vars.AWS_REGION }}
+  AWS_REGION:     ${{ vars.AWS_REGION }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-  IMAGE_TAG:     ${{ github.sha }}
+  IMAGE_TAG:      ${{ github.sha }}
 
 permissions:
+  contents: write
   id-token: write
-  contents: read
 
 jobs:
   lint-build-push:
@@ -30,51 +30,58 @@ jobs:
     environment: dev
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-          cache: 'pip'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+        cache: pip
 
-      - name: Install deps, linters & test tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r app/requirements.txt
-          pip install pytest pytest-asyncio httpx
-          pip install black==25.1.0 isort==6.0.1 flake8==7.3.0
+    - name: Install deps, linters, test tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r app/requirements.txt
+        pip install pytest pytest-asyncio httpx
+        pip install black==25.1.0 isort==6.0.1 flake8==7.3.0
 
+    - name: Run format / lint
+      run: |
+        isort --profile black --check-only .
+        black --check .
+        flake8 .
 
-      - name: Verify import order isort
-        run: isort --profile black --check-only .
+    - name: Run unit + integration tests
+      env:
+        PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/app
+      run: pytest -q
 
-      - name: Verify formatting (black)
-        run: black --check .
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region:     ${{ env.AWS_REGION }}
 
-      - name: Run flake8
-        run: flake8 .
+    - name: Log in to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v2
+      id: ecr-login
 
-      - name: Run unit tests
-        env:
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/app
-        run: pytest -q
+    - name: Build & push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./app
+        file: ./app/Dockerfile
+        push: true
+        tags: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region:     ${{ env.AWS_REGION }}
-
-      - name: Log in to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-        id: ecr-login
-
-      - name: Build & push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./app
-          file: ./app/Dockerfile
-          push: true
-          tags: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+    - name: Bump image tag in values-dev.yaml & push commit
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        yq e '.image.tag = "${{ env.IMAGE_TAG }}"' -i charts/web-nginx/environments/values-dev.yaml
+        git config --global user.email "ci@github"
+        git config --global user.name  "ci-bot"
+        git add charts/web-nginx/environments/values-dev.yaml
+        git commit -m "ci: bump web image to ${{ env.IMAGE_TAG }}" || exit 0   # no commit if unchanged
+        git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git HEAD:main

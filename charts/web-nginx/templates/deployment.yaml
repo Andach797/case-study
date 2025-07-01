@@ -1,44 +1,30 @@
+{{- /*
+Deployment for web-nginx
+*/}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "web-nginx.fullname" . }}
   labels:
-    {{- include "web.labels" . | nindent 4 }}
+    {{- include "web-nginx.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "web.labels" . | nindent 6 }}
+      {{- include "web-nginx.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
   template:
     metadata:
       labels:
-        {{- include "web.labels" . | nindent 8 }}
+        {{- include "web-nginx.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
-      containers:
-        - name: web
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
-          ports:
-            - containerPort: 8000
-          envFrom:
-            - configMapRef:
-                name: {{ .Values.configMapName }}
-          env:
-            - name: CONFIG_SECRET_ARN
-              value: "{{ .Values.secretArn }}"
-          volumeMounts:
-            - name: shared-static
-              mountPath: /app/uploads
-        - name: nginx
-          image: "{{ .Values.nginxImage.repository }}:{{ .Values.nginxImage.tag }}"
-          ports:
-            - containerPort: 80
-          volumeMounts:
-            - name: shared-static
-              mountPath: /usr/share/nginx/html
-            - name: nginx-conf
-              mountPath: /etc/nginx/conf.d
       volumes:
         - name: shared-static
           persistentVolumeClaim:
@@ -46,3 +32,45 @@ spec:
         - name: nginx-conf
           configMap:
             name: nginx-conf
+        - name: sm-vol
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              # if not set in values, fall back to <release>-spc
+              secretProviderClass: {{ .Values.secretProviderClassName | default (printf "%s-spc" (include "web-nginx.fullname" .)) }}
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: web-app-runtime
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+{{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - { name: shared-static, mountPath: /app/uploads }
+            - { name: sm-vol,       mountPath: {{ .Values.mountSecretsPath }} }
+        - name: nginx
+          image: "{{ .Values.nginxImage.repository }}:{{ .Values.nginxImage.tag }}"
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet: { path: "/", port: 80 }
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+{{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - { name: shared-static, mountPath: /usr/share/nginx/html }
+            - { name: nginx-conf,    mountPath: /etc/nginx/conf.d }

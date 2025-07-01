@@ -1,7 +1,63 @@
 locals {
-  b                            = data.terraform_remote_state.bootstrap.outputs
+  b = data.terraform_remote_state.bootstrap.outputs
+
   argocd_chart_version         = "8.1.2"
   argocd_image_updater_version = "0.12.3"
+
+  sm_csi_chart_version    = "1.5.2" # kubernetes-sigs/secrets-store-csi-driver
+  sm_aws_provider_version = "0.3.9" # aws/secrets-store-csi-driver-provider-aws
+}
+
+module "sm_csi_irsa" {
+  source      = "../../modules/irsa_sa"
+  name_prefix = "${var.project_tag}-${var.environment}-sm-csi"
+  namespace   = "kube-system"
+
+  oidc_arn = local.b.oidc_arn
+  oidc_url = replace(local.b.oidc_url, "https://", "")
+
+  secret_arns = [local.b.web_app_secret_arn]
+  tags        = var.tags
+}
+
+resource "helm_release" "secrets_store_csi_driver" {
+  name       = "secrets-store-csi-driver"
+  repository = "https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts"
+  chart      = "secrets-store-csi-driver"
+  version    = local.sm_csi_chart_version
+  namespace  = "kube-system"
+
+  values = [yamlencode({
+    syncSecret           = { enabled = true }
+    enableSecretRotation = true
+    serviceAccount = {
+      create = false # we’ll reuse IRSA below
+      name   = module.sm_csi_irsa.service_account_name
+      annotations = {
+        "eks.amazonaws.com/role-arn" = module.sm_csi_irsa.role_arn
+      }
+    }
+  })]
+}
+
+resource "helm_release" "secrets_store_aws_provider" {
+  name       = "secrets-store-csi-driver-aws"
+  repository = "https://aws.github.io/secrets-store-csi-driver-provider-aws"
+  chart      = "secrets-store-csi-driver-provider-aws"
+  version    = local.sm_aws_provider_version
+  namespace  = "kube-system"
+
+  values = [yamlencode({
+    serviceAccount = {
+      create = false
+      name   = module.sm_csi_irsa.service_account_name
+      annotations = {
+        "eks.amazonaws.com/role-arn" = module.sm_csi_irsa.role_arn
+      }
+    }
+  })]
+
+  depends_on = [helm_release.secrets_store_csi_driver]
 }
 
 module "web_app_irsa" {
@@ -11,9 +67,10 @@ module "web_app_irsa" {
 
   bucket_arn  = "arn:aws:s3:::${local.b.csv_bucket}"
   secret_arns = [local.b.web_app_secret_arn]
-  oidc_arn    = local.b.oidc_arn
-  oidc_url    = replace(local.b.oidc_url, "https://", "")
-  tags        = var.tags
+
+  oidc_arn = local.b.oidc_arn
+  oidc_url = replace(local.b.oidc_url, "https://", "")
+  tags     = var.tags
 }
 
 resource "helm_release" "argocd" {

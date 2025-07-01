@@ -175,3 +175,8 @@ def show_file(
             "filename": filename,
         },
     )
+
+
+@app.get("/health", include_in_schema=False)
+def health() -> PlainTextResponse:
+    return PlainTextResponse("ok")

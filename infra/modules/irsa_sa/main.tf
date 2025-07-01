@@ -37,7 +37,9 @@ data "aws_iam_policy_document" "inline" {
   dynamic "statement" {
     for_each = length(var.secret_arns) == 0 ? [] : [1]
     content {
-      actions   = ["secretsmanager:GetSecretValue"]
+      actions = ["secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ]
       resources = var.secret_arns
       effect    = "Allow"
     }

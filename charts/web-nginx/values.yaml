@@ -4,7 +4,7 @@ replicaCount: 2
 image:
   repository: ""
   tag: latest
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 nginxImage:
   repository: nginx
@@ -26,6 +26,7 @@ efs:
   uid: "1000"
   gid: "1000"
 
+storageClassName: efs-sc
 # service
 service:
   type: LoadBalancer
@@ -34,10 +35,21 @@ service:
 # autoscaling
 hpa:
   enabled: true
-  minReplicas: 3
-  maxReplicas: 10
+  minReplicas: 2
+  maxReplicas: 3
   targetCPU: 60
 
 serviceAccount:
   create: false
   name: case-dev-web-app-sa
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+
+secretProviderClassName: ""
+mountSecretsPath: /app/secrets

@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Values.configMapName }}
   labels:
-    {{- include "web.labels" . | nindent 4 }}
+    {{- include "web-nginx.labels" . | nindent 4 }}
 data:
   LOG_LEVEL: "{{ .Values.app.logLevel }}"
   MAX_UPLOAD_MB: "{{ .Values.app.maxUploadMB }}"

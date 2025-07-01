@@ -4,16 +4,18 @@ metadata:
   name: web-nginx
   namespace: argocd
 spec:
+  project: default
   destination:
     server: https://kubernetes.default.svc
     namespace: default
   source:
     repoURL: https://github.com/Andach797/case-study
     targetRevision: main
-    path: argocd/apps  /web-nginx
+    path: charts/web-nginx
     helm:
       valueFiles:
         - environments/values-dev.yaml
-  project: default
   syncPolicy:
-    automated: { prune: true, selfHeal: true }
+    automated:
+      prune: true
+      selfHeal: true

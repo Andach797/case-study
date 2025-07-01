@@ -76,7 +76,7 @@ module "csv_bucket" {
 
 module "web_app_secret" {
   source      = "../../modules/secrets_manager"
-  name        = "${var.project_tag}-${var.environment}-web-app-secret"
+  name        = "${var.project_tag}-${var.environment}-web-app-scrt"
   description = "Secrets for the web app"
   secret_kv = {
     CSV_BUCKET = module.csv_bucket.bucket
@@ -127,7 +127,8 @@ resource "local_file" "web_nginx_values_dev" {
       tag        = "latest"
     }
 
-    secretArn = module.web_app_secret.arn
+    secretArn               = module.web_app_secret.arn
+    secretProviderClassName = "${var.project_tag}-web-nginx-spc"
 
     efs = {
       fileSystemId  = module.efs_shared_static.file_system_id

@@ -3,11 +3,11 @@ kind: Service
 metadata:
   name: {{ include "web-nginx.fullname" . }}-svc
   labels:
-    {{- include "web.labels" . | nindent 4 }}
+    {{- include "web-nginx.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: 80
   selector:
-    {{- include "web.labels" . | nindent 4 }}
+    {{- include "web-nginx.selectorLabels" . | nindent 4 }}

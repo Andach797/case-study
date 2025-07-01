@@ -13,4 +13,6 @@ spec:
     targetRevision: main
     path: argocd/apps
   syncPolicy:
-    automated: { prune: true, selfHeal: true }
+    automated:
+      prune: true
+      selfHeal: true
