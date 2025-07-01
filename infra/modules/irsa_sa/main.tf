@@ -23,13 +23,17 @@ resource "aws_iam_role" "this" {
 }
 
 data "aws_iam_policy_document" "inline" {
-  statement {
-    actions   = ["s3:PutObject"]
-    resources = ["${var.bucket_arn}/*"]
-    effect    = "Allow"
+  # S3 write permissions (if bucket_arn provided)
+  dynamic "statement" {
+    for_each = var.bucket_arn == null ? [] : [var.bucket_arn]
+    content {
+      actions   = ["s3:PutObject"]
+      resources = ["${statement.value}/*"]
+      effect    = "Allow"
+    }
   }
 
-  # read runtime secrets dynamically
+  # Secrets Manager (if secret arns provided)
   dynamic "statement" {
     for_each = length(var.secret_arns) == 0 ? [] : [1]
     content {
@@ -39,7 +43,20 @@ data "aws_iam_policy_document" "inline" {
     }
   }
 
-  # lets the app log its identity maybe needed
+  # ECR pull permissions (if ecr_repo_arn provided)
+  dynamic "statement" {
+    for_each = var.ecr_repo_arn == null ? [] : [var.ecr_repo_arn]
+    content {
+      actions = [
+        "ecr:BatchGetImage",
+        "ecr:GetAuthorizationToken",
+        "ecr:DescribeImages"
+      ]
+      resources = [statement.value]
+      effect    = "Allow"
+    }
+  }
+
   statement {
     actions   = ["sts:GetCallerIdentity"]
     resources = ["*"]

@@ -1,0 +1,7 @@
+"efs":
+  "accessPointId": "fsap-0ed5f37822313f3b6"
+  "fileSystemId": "fs-0d615a25847e6f27c"
+"image":
+  "repository": "562538630478.dkr.ecr.eu-central-1.amazonaws.com/web-app-dev"
+  "tag": "latest"
+"secretArn": "arn:aws:secretsmanager:eu-central-1:562538630478:secret:case-dev-web-app-secret-SHf2AO"

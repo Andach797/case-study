@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web-nginx
+  namespace: argocd
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  source:
+    repoURL: https://github.com/Andach797/case-study
+    targetRevision: main
+    path: argocd/apps  /web-nginx
+    helm:
+      valueFiles:
+        - environments/values-dev.yaml
+  project: default
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }

@@ -1,5 +1,7 @@
 locals {
-  b = data.terraform_remote_state.bootstrap.outputs
+  b                            = data.terraform_remote_state.bootstrap.outputs
+  argocd_chart_version         = "8.1.2"
+  argocd_image_updater_version = "0.12.3"
 }
 
 module "web_app_irsa" {
@@ -7,28 +9,142 @@ module "web_app_irsa" {
   name_prefix = "${var.project_tag}-${var.environment}-web-app"
   namespace   = "default"
 
-  bucket_arn = "arn:aws:s3:::${local.b.csv_bucket}"
-  oidc_arn   = local.b.oidc_arn
-  oidc_url   = replace(local.b.oidc_url, "https://", "")
-
-  tags = var.tags
+  bucket_arn  = "arn:aws:s3:::${local.b.csv_bucket}"
+  secret_arns = [local.b.web_app_secret_arn]
+  oidc_arn    = local.b.oidc_arn
+  oidc_url    = replace(local.b.oidc_url, "https://", "")
+  tags        = var.tags
 }
 
-resource "helm_release" "web_nginx" {
-  name      = "web-nginx"
-  chart     = "${path.module}/../../../charts/web-nginx"
-  namespace = "default"
-  version   = "0.1.0"
+resource "helm_release" "argocd" {
+  name             = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  version          = local.argocd_chart_version
+  namespace        = "argocd"
+  create_namespace = true
 
   values = [yamlencode({
-    image = {
-      repository = local.b.ecr_repo_url
-      tag        = var.image_tag
-    }
-    secretArn = local.b.web_app_secret_arn
-    efs = {
-      fileSystemId  = local.b.efs_fs_id
-      accessPointId = local.b.efs_ap_id
+    server = {
+      service = {
+        type = "LoadBalancer"
+        annotations = {
+          "service.beta.kubernetes.io/aws-load-balancer-type" = "nlb"
+        }
+      }
+      extraArgs = ["--insecure"]
     }
   })]
+
+  atomic          = true
+  wait            = true
+  timeout         = 900
+  cleanup_on_fail = true
 }
+# Image updater
+
+# module "argocd_image_updater_irsa" {
+#   source      = "../../modules/irsa_sa"
+#   name_prefix = "${var.project_tag}-${var.environment}-image-updater"
+#   namespace   = helm_release.argocd.namespace
+
+#   ecr_repo_arn = local.b.repository_arn
+#   oidc_arn     = local.b.oidc_arn
+#   oidc_url     = replace(local.b.oidc_url, "https://", "")
+#   tags         = var.tags
+# }
+# data "kubernetes_secret_v1" "argocd_admin_pwd" {
+#   depends_on = [helm_release.argocd]
+
+#   metadata {
+#     name      = "argocd-initial-admin-secret"
+#     namespace = helm_release.argocd.namespace
+#   }
+# }
+
+# resource "kubernetes_secret_v1" "argocd_image_updater_token" {
+#   metadata {
+#     name      = "argocd-image-updater-secret"
+#     namespace = helm_release.argocd.namespace
+#   }
+#   type = "Opaque"
+# }
+
+# resource "null_resource" "generate_argocd_token" {
+#   depends_on = [
+#     kubernetes_secret_v1.argocd_image_updater_token,
+#     data.kubernetes_secret_v1.argocd_admin_pwd
+#   ]
+
+#   triggers = {
+#     admin_pw_hash = data.kubernetes_secret_v1.argocd_admin_pwd.data["password"]
+#   }
+
+#   provisioner "local-exec" {
+#     interpreter = ["/bin/sh", "-c"]
+#     command     = "${path.module}/scripts/gen-argocd-token.sh ${data.kubernetes_secret_v1.argocd_admin_pwd.data["password"]}"
+#   }
+# }
+
+
+# # resource "kubernetes_secret_v1" "image_updater_git" {
+#   metadata {
+#     name      = "git-creds"
+#     namespace = helm_release.argocd.namespace
+#   }
+#   type = "Opaque"
+#   data = {
+#     token = base64encode(var.github_pat)
+#   }
+# }
+
+# resource "helm_release" "argocd_image_updater" {
+#   name       = "argocd-image-updater"
+#   repository = "https://argoproj.github.io/argo-helm"
+#   chart      = "argocd-image-updater"
+#   version    = local.argocd_image_updater_version
+#   namespace  = helm_release.argocd.namespace
+
+#  values = [yamlencode({
+#     serviceAccount = {
+#       create = false
+#       name   = module.argocd_image_updater_irsa.service_account_name
+#     }
+#     extraEnv = [
+#       { name = "AWS_REGION", value = var.aws_region },
+#       { name = "ARGOCD_TOKEN",
+#         valueFrom = {
+#           secretKeyRef = {
+#             name = kubernetes_secret_v1.argocd_image_updater_token.metadata[0].name
+#             key  = "argocd.token"
+#           }
+#         }
+#       }
+#     ]
+#     config = {
+#       argocd = {
+#         serverAddress = "argocd-server.${helm_release.argocd.namespace}.svc.cluster.local:443"
+#         insecure      = true
+#       }
+#       git = {
+#         writeBack = {
+#           branch      = "main"
+#           credentials = { username = "oauth2", password = "git-creds:token" }
+#         }
+#       }
+#       registries = {
+#         "aws-ecr" = {
+#           name      = "aws-ecr"
+#           type      = "aws"
+#           awsRegion = "eu-central-1"
+#           prefix    = local.b.ecr_repo_url
+#         }
+#       }
+#     }
+#   })]
+
+#   depends_on = [
+#     null_resource.generate_argocd_token,
+#     kubernetes_secret_v1.image_updater_git
+#   ]
+# }

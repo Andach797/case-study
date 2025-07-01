@@ -19,6 +19,12 @@ variable "image_tag" {
   default     = "latest"
 }
 
+variable "github_pat" {
+  description = "GitHub personal access token with repo:write on case-study"
+  type        = string
+  sensitive   = true
+}
+
 variable "tags" {
   type        = map(string)
   description = "Extra tags for all AWS resources created here."

@@ -5,14 +5,12 @@ on:
     branches: [ main ]
     paths:
       - "app/**"
-      - "charts/**"
       - "tests/**"
       - "*.py"
   pull_request:
     branches: [ main ]
     paths:
       - "app/**"
-      - "charts/**"
       - "tests/**"
       - "*.py"
 

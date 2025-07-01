@@ -11,8 +11,14 @@ variable "namespace" {
 variable "bucket_arn" {
   description = "S3 bucket ARN the pod may write to"
   type        = string
+  default     = null
 }
 
+variable "ecr_repo_arn" {
+  description = "ECR repository ARN the pod may read images from"
+  type        = string
+  default     = null
+}
 variable "secret_arns" {
   type        = list(string)
   description = "Secrets Manager ARNs the pod may read"

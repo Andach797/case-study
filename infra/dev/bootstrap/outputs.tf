@@ -45,6 +45,11 @@ output "csv_bucket" {
   value       = module.csv_bucket.bucket
 }
 
+output "repository_arn" {
+  description = "Repository arn that CI pushes to."
+  value       = module.web_app_ecr.repository_arn
+}
+
 output "ecr_repo_url" {
   description = "Repository URL that CI pushes to."
   value       = module.web_app_ecr.repository_url

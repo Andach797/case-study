@@ -1,4 +1,3 @@
-
 #  Networking
 module "network" {
   source               = "../../modules/vpc"
@@ -31,14 +30,14 @@ module "eks_cluster" {
   managed_node_groups = {
     on_demand = {
       capacity_type  = "ON_DEMAND"
-      instance_types = ["t3.micro"]
+      instance_types = ["t3.medium"]
       desired_size   = 2
       min_size       = 2
       max_size       = 3
     },
     spot = {
       capacity_type  = "SPOT"
-      instance_types = ["t3.small"]
+      instance_types = ["t3.medium"]
       desired_size   = 1
       min_size       = 1
       max_size       = 3
@@ -77,7 +76,7 @@ module "csv_bucket" {
 
 module "web_app_secret" {
   source      = "../../modules/secrets_manager"
-  name        = "${var.project_tag}-${var.environment}-web-app-secrets"
+  name        = "${var.project_tag}-${var.environment}-web-app-secret"
   description = "Secrets for the web app"
   secret_kv = {
     CSV_BUCKET = module.csv_bucket.bucket
@@ -113,4 +112,35 @@ module "gha_tf_role" {
   role_name           = "case-gha-terraform"
   oidc_provider_arn   = module.gha_ci_role.oidc_provider_arn
   tags                = var.tags
+}
+# Write charts/web-nginx/environments/values-dev.yaml from tf outputs
+
+resource "local_file" "web_nginx_values_dev" {
+  filename = "${path.root}/../../../charts/web-nginx/environments/values-dev.yaml"
+  provisioner "local-exec" {
+    command = "mkdir -p $(dirname ${self.filename})"
+  }
+
+  content = yamlencode({
+    image = {
+      repository = module.web_app_ecr.repository_url
+      tag        = "latest"
+    }
+
+    secretArn = module.web_app_secret.arn
+
+    efs = {
+      fileSystemId  = module.efs_shared_static.file_system_id
+      accessPointId = module.efs_shared_static.access_point_id
+    }
+  })
+
+  file_permission = "0644"
+
+  # generate file whenever its inputs change
+  depends_on = [
+    module.web_app_ecr,
+    module.web_app_secret,
+    module.efs_shared_static
+  ]
 }
