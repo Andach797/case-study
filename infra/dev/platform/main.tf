@@ -7,7 +7,6 @@ locals {
   sm_csi_chart_version     = "1.5.2" # kubernetes-sigs/secrets-store-csi-driver
   sm_aws_provider_version  = "0.3.9" # aws/secrets-store-csi-driver-provider-aws
   cluster_autoscaler_chart = "9.33.0"
-  cluster_autoscaler_image = "v1.33.0"
 }
 
 module "sm_csi_irsa" {
@@ -102,8 +101,7 @@ resource "helm_release" "argocd" {
 }
 
 module "ca_irsa" {
-  source = "../../modules/irsa_sa"
-
+  source      = "../../modules/irsa_sa"
   name_prefix = "${var.project_tag}-${var.environment}-ca"
   namespace   = "kube-system"
 
@@ -124,6 +122,10 @@ data "aws_iam_policy_document" "ca_extra" {
       "autoscaling:SetDesiredCapacity",
       "autoscaling:TerminateInstanceInAutoScalingGroup",
       "ec2:DescribeLaunchTemplateVersions",
+      "ec2:DescribeInstances",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeSubnets",
+      "ec2:DescribeSecurityGroups",
     ]
     resources = ["*"]
   }
@@ -148,15 +150,27 @@ resource "helm_release" "cluster_autoscaler" {
     name  = "serviceAccount.create"
     value = "false"
   }
+
   set {
     name  = "serviceAccount.name"
-    value = module.ca_irsa.service_account_name
+    value = module.ca_irsa.service_account_name # point at your IRSA SA
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.ca_irsa.role_arn
   }
 
   set {
     name  = "cloudProvider"
     value = "aws"
   }
+
+  set {
+    name  = "awsRegion"
+    value = var.aws_region
+  }
+
   set {
     name  = "autoDiscovery.clusterName"
     value = local.b.cluster_name
@@ -168,12 +182,7 @@ resource "helm_release" "cluster_autoscaler" {
   }
   set {
     name  = "autoscaling.enabled"
-    value = "false"
-  }
-
-  set {
-    name  = "image.tag"
-    value = local.cluster_autoscaler_image
+    value = "true"
   }
 
   depends_on = [
