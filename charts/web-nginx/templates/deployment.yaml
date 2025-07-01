@@ -51,10 +51,11 @@ spec:
           readinessProbe:
             httpGet: { path: /health, port: 8000 }
             periodSeconds: 10
+            initialDelaySeconds: 20
             failureThreshold: 3
           livenessProbe:
             httpGet: { path: /health, port: 8000 }
-            initialDelaySeconds: 20
+            initialDelaySeconds: 90
             periodSeconds: 15
           resources:
 {{- toYaml .Values.resources | nindent 12 }}

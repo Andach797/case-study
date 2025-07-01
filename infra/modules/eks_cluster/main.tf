@@ -76,11 +76,16 @@ resource "aws_eks_cluster" "cluster" {
 }
 
 # OIDC provider
+
+data "tls_certificate" "eks_oidc" {
+  url = aws_eks_cluster.cluster.identity[0].oidc[0].issuer
+}
+
 resource "aws_iam_openid_connect_provider" "eks_oidc" {
   depends_on      = [aws_eks_cluster.cluster]
   url             = aws_eks_cluster.cluster.identity[0].oidc[0].issuer
   client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"]
+  thumbprint_list = [data.tls_certificate.eks_oidc.certificates[0].sha1_fingerprint]
 
   tags = merge({
     Name        = "${var.cluster_name}-oidc"

@@ -4,3 +4,8 @@ output "service_account_name" {
 output "role_arn" {
   value = aws_iam_role.this.arn
 }
+
+output "role_name" {
+  description = "Plain iam role name"
+  value       = aws_iam_role.this.name
+}

@@ -4,8 +4,10 @@ locals {
   argocd_chart_version         = "8.1.2"
   argocd_image_updater_version = "0.12.3"
 
-  sm_csi_chart_version    = "1.5.2" # kubernetes-sigs/secrets-store-csi-driver
-  sm_aws_provider_version = "0.3.9" # aws/secrets-store-csi-driver-provider-aws
+  sm_csi_chart_version     = "1.5.2" # kubernetes-sigs/secrets-store-csi-driver
+  sm_aws_provider_version  = "0.3.9" # aws/secrets-store-csi-driver-provider-aws
+  cluster_autoscaler_chart = "9.33.0"
+  cluster_autoscaler_image = "v1.33.0"
 }
 
 module "sm_csi_irsa" {
@@ -98,6 +100,89 @@ resource "helm_release" "argocd" {
   timeout         = 900
   cleanup_on_fail = true
 }
+
+module "ca_irsa" {
+  source = "../../modules/irsa_sa"
+
+  name_prefix = "${var.project_tag}-${var.environment}-ca"
+  namespace   = "kube-system"
+
+  oidc_arn = local.b.oidc_arn
+  oidc_url = replace(local.b.oidc_url, "https://", "")
+  tags     = var.tags
+}
+
+data "aws_iam_policy_document" "ca_extra" {
+  statement {
+    sid    = "ASGActions"
+    effect = "Allow"
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeTags",
+      "autoscaling:SetDesiredCapacity",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "ec2:DescribeLaunchTemplateVersions",
+    ]
+    resources = ["*"]
+  }
+}
+
+
+resource "aws_iam_role_policy" "ca_inline" {
+  name   = "${module.ca_irsa.role_name}-asg"
+  role   = module.ca_irsa.role_name
+  policy = data.aws_iam_policy_document.ca_extra.json
+}
+
+
+resource "helm_release" "cluster_autoscaler" {
+  name       = "cluster-autoscaler"
+  repository = "https://kubernetes.github.io/autoscaler"
+  chart      = "cluster-autoscaler"
+  version    = local.cluster_autoscaler_chart # 9.33.0for 1.33.0 eks
+  namespace  = "kube-system"
+
+  set {
+    name  = "serviceAccount.create"
+    value = "false"
+  }
+  set {
+    name  = "serviceAccount.name"
+    value = module.ca_irsa.service_account_name
+  }
+
+  set {
+    name  = "cloudProvider"
+    value = "aws"
+  }
+  set {
+    name  = "autoDiscovery.clusterName"
+    value = local.b.cluster_name
+  }
+
+  set {
+    name  = "replicaCount"
+    value = "1"
+  }
+  set {
+    name  = "autoscaling.enabled"
+    value = "false"
+  }
+
+  set {
+    name  = "image.tag"
+    value = local.cluster_autoscaler_image
+  }
+
+  depends_on = [
+    helm_release.secrets_store_aws_provider,
+    aws_iam_role_policy.ca_inline,
+  ]
+}
+
+
 # Image updater
 
 # module "argocd_image_updater_irsa" {
