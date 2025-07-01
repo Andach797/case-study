@@ -155,7 +155,7 @@ def show_file(
     filename: str,
 ) -> HTMLResponse:
     if filename != Path(filename).name:
-        raise HTTPException(400, "bad filename")
+        raise HTTPException(400, "bad file")
 
     target = UPLOAD_DIR / filename
     if not target.exists():

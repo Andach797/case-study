@@ -1,6 +1,3 @@
-{{- /*
-Deployment for web-nginx
-*/}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,6 +22,7 @@ spec:
         {{- include "web-nginx.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+
       volumes:
         - name: shared-static
           persistentVolumeClaim:
@@ -37,8 +35,8 @@ spec:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              # if not set in values, fall back to <release>-spc
               secretProviderClass: {{ .Values.secretProviderClassName | default (printf "%s-spc" (include "web-nginx.fullname" .)) }}
+
       containers:
         - name: web
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -49,19 +47,22 @@ spec:
             - secretRef:
                 name: web-app-runtime
           readinessProbe:
-            httpGet: { path: /health, port: 8000 }
-            periodSeconds: 10
+            httpGet: { path: "/", port: 8000 }
             initialDelaySeconds: 20
+            periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
-            httpGet: { path: /health, port: 8000 }
+            httpGet: { path: "/", port: 8000 }
             initialDelaySeconds: 90
             periodSeconds: 15
           resources:
 {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - { name: shared-static, mountPath: /app/uploads }
-            - { name: sm-vol,       mountPath: {{ .Values.mountSecretsPath }} }
+            - name: shared-static
+              mountPath: /app/uploads
+            - name: sm-vol
+              mountPath: {{ .Values.mountSecretsPath }}
+
         - name: nginx
           image: "{{ .Values.nginxImage.repository }}:{{ .Values.nginxImage.tag }}"
           ports:
@@ -70,8 +71,14 @@ spec:
             httpGet: { path: "/", port: 80 }
             periodSeconds: 10
             failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: "/", port: 80 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
           resources:
 {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - { name: shared-static, mountPath: /usr/share/nginx/html }
-            - { name: nginx-conf,    mountPath: /etc/nginx/conf.d }
+            - name: shared-static
+              mountPath: /usr/share/nginx/html
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
