@@ -3,6 +3,6 @@
   "fileSystemId": "fs-052333233129b0a25"
 "image":
   "repository": "562538630478.dkr.ecr.eu-central-1.amazonaws.com/web-app-dev"
-  "tag": "latest"
+  "tag": "1457f98743878aa59ea27c237c5a27ee5e2c64c1"
 "secretArn": "arn:aws:secretsmanager:eu-central-1:562538630478:secret:case-dev-web-app-secrett-b3TySz"
 "secretProviderClassName": "case-web-nginx-spc"
