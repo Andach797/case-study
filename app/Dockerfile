@@ -6,7 +6,6 @@ COPY requirements.txt .
 RUN pip install --upgrade pip \
  && pip wheel --no-cache-dir -r requirements.txt
 
-# runtime
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1

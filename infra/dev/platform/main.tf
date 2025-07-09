@@ -153,7 +153,7 @@ resource "helm_release" "cluster_autoscaler" {
 
   set {
     name  = "serviceAccount.name"
-    value = module.ca_irsa.service_account_name # point at your IRSA SA
+    value = module.ca_irsa.service_account_name
   }
 
   set {

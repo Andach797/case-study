@@ -76,7 +76,7 @@ module "csv_bucket" {
 
 module "web_app_secret" {
   source      = "../../modules/secrets_manager"
-  name        = "${var.project_tag}-${var.environment}-web-app-scrt"
+  name        = "${var.project_tag}-${var.environment}-web-app-secrett"
   description = "Secrets for the web app"
   secret_kv = {
     CSV_BUCKET = module.csv_bucket.bucket
